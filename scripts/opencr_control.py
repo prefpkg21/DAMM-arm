@@ -132,4 +132,3 @@ if __name__ == "__main__":
         arm_ctl.publish_goals()
 	arm_ctl.rate.sleep()
 
-
