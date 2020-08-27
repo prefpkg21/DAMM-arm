@@ -41,6 +41,7 @@ class MoveArm():
         #self.turret_aim_publisher = rospy.Publisher('/dynamixel_workbench/dynamixel_command', MX, queue_size=2)
         self.cmd_subscriber = rospy.Subscriber('/bluetooth_teleop/joy',Joy, self.handle_joystick, queue_size=2)
 	self.goal_pub = rospy.Publisher('damm_goal', Servos, queue_size=1)
+	self.light_pub = rospy.Publisher('damm_light', Light, queue_size=1)
         #self.servo_position_updater = rospy.Subscriber('/dynamixel_workbench/dynamixel_state', DynamixelStateList, self.update_current_position, queue_size=1)
         
         self.ctrl_c= False
@@ -58,6 +59,10 @@ class MoveArm():
         self.dxl2_goal = 2040
         self.dxl3_goal = 1530
 	self.linsrvo_chng = 0
+	self.led1_state = False
+	self.led2_state = False
+	self.manual_mode = False
+	self.stale_light = False
 
     # def publish_once_in_dyna_command(self, cmd):
     #     while not self.ctrl_c:
@@ -86,6 +91,10 @@ class MoveArm():
 	right = data.axes[4] - 1  #right trigger
 	left = data.axes[3] - 1  #left trigger
 	dxl1_scale =  left - right
+	if data.axes[0] != 0 or data.axes[1] != 0:
+		self.manual_mode = True
+	else:
+		self.manual_mode = False
 
 	dxl2_cut = data.axes[6] # normally 0 or 1/-1 pressed left/right d-pad
 	if data.axes[5] > 0.2:
@@ -107,8 +116,18 @@ class MoveArm():
 	msg.dxl3 =  self.dxl3_goal
 	msg.linear = self.linsrvo_chng
 	self.goal_pub.publish(msg)
-
-        
+	
+    def update_light(self):
+	msg = Light()
+	if self.manual_mode:
+		# Yellow
+		msg.led1 = True
+		msg.led2 = True
+	else:
+		#Red
+		msg.led1 = True
+		msg.led2 = False
+        self.light_pub(msg)
 
     def update_current_position(self, msg):
         self.dxl0_pos = msg.dynamixel_state[0].present_position
@@ -130,5 +149,7 @@ if __name__ == "__main__":
 
     while not rospy.is_shutdown():
         arm_ctl.publish_goals()
+	arm_ctl.update_light()
 	arm_ctl.rate.sleep()
+	
 
